@@ -263,4 +263,29 @@ RSpec.describe "bundler/inline#gemfile" do
     expect(last_command).to be_success
     expect(last_command.stdout).to eq "1.0.0"
   end
+
+  describe "when path gems depend on API server gems" do
+    let(:source_hostname) { "localgemserver.test" }
+    let(:source_uri) { "http://#{source_hostname}" }
+
+    before do
+      build_lib "needs_rake", "1.0.0" do |s|
+        s.add_dependency "rack", "= 1.0.0"
+      end
+
+      gemfile <<-G
+        source "#{source_uri}"
+        gem "needs_rake", path: "#{lib_path("needs_rake-1.0.0")}"
+      G
+
+      bundle! :install, :artifice => "endpoint"
+      expect(the_bundle).to include_gems "rack 1.0.0"
+    end
+
+    it "finds installed copies of API server gems" do
+      # This test is specifically to make sure that second installs are able
+      # to find gems that were previously installed from the API server.
+      bundle! :install, :artifice => "endpoint"
+    end
+  end
 end
